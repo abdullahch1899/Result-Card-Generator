@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result Cards · premium generator</title>
+    <!-- xlsx library for template & data -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        *{ box-sizing: border-box; margin: 0; padding: 0; }
+        body{ background: #e9eef2; font-family: 'Segoe UI', Roboto, Arial, sans-serif; padding: 0; margin: 0; }
+        .controls{
+            position: sticky; top: 0; background: white; padding: 15px 20px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+            display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: center;
+            z-index: 999; margin: 0 0 20px 0;
+        }
+        .controls > *{ display: inline-flex; align-items: center; gap: 6px; }
+        .controls label{ font-weight: 600; color: #000; }
+        button, .controls input, .controls select{
+            background: white; border: 1.5px solid #000; padding: 8px 16px;
+            border-radius: 60px; font-weight: 600; color: #2c1e13; cursor: pointer;
+            transition: 0.15s; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        button{ background: #000; color: white; border: none; box-shadow: 0 6px 0 #000; transform: translateY(-2px); }
+        button:active{ transform: translateY(3px); box-shadow: 0 2px 0 #000; }
+        input[type="file"]{ max-width: 220px; background: #fefaf5; }
+
+        /* FIXED A4 PAGE DIMENSIONS - full bleed */
+        .page{
+            width: 210mm;
+            height: 297mm;
+            margin: 10mm auto;
+            background: white;
+            padding: 0;
+            box-sizing: border-box;
+            page-break-after: always;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* card fills entire page */
+        .card{ 
+            width: 100%;
+            height: 100%;
+            padding: 20px 25px;
+            border-radius: 0;
+            position: relative;
+            transition: 0.1s;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* border presets - adjusted for full page
+        .b1{ border: 8px double #000; box-shadow: inset 0 0 0 6px #000; }
+        .b2{ border: 10px solid #1e88e5; box-shadow: inset 0 0 0 3px white, inset 0 0 0 7px #90caf9; }
+        .b3{ border: 10px dashed #2e7d32; box-shadow: inset 0 0 0 3px #f1f8e9, inset 0 0 0 7px #a5d6a7; }
+        .b4{ border: 12px groove #b23c1c; box-shadow: inset 0 0 0 3px #ffccbc, inset 0 0 0 8px #ffab91; }
+        .b5{ border: 10px solid #1b1b1b; box-shadow: inset 0 0 0 4px #f5f5f5, inset 0 0 0 9px #424242; } */
+
+        /* theme backgrounds */
+        .t1{ background: #fff9f0; }
+        .t2{ background: linear-gradient(145deg, #e1f5fe, #b3e5fc); }
+        .t3{ background: linear-gradient(145deg, #e8f5e9, #c8e6c9); }
+        .t4{ background: linear-gradient(145deg, #ffebee, #ffcdd2); }
+        .t5{ background: #263238; color: #eceff1; }
+        .t6{ background: linear-gradient(145deg, #fff9c4, #ffe082); }
+
+        .top{ 
+            text-align: center; 
+            border-bottom: 3px solid #000; 
+            padding-bottom: 12px; 
+            margin-bottom: 15px; 
+            position: relative; 
+            flex-shrink: 0;
+        }
+        .logo{ 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 85px; 
+            height: 85px; 
+            object-fit: contain; 
+            border-radius: 18px; 
+            background: white; 
+            padding: 5px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+        }
+        .photo{ 
+            width: 120px; 
+            height: 120px; 
+            object-fit: cover; 
+            border-radius: 50%; 
+            border: 4px solid #000; 
+            box-shadow: 0 6px 14px rgba(0,0,0,0.3); 
+            background: white; 
+        }
+
+        .row{ 
+            display: flex; 
+            justify-content: center; /* center both info box and photo */
+            align-items: center; 
+            margin: 20px 0 25px; 
+            gap: 40px; /* more space between centered items */
+            flex-wrap: wrap; 
+            flex-shrink: 0;
+        }
+        .infoBox{
+            border: 3px solid #000; 
+            border-radius: 28px; 
+            padding: 18px 25px;
+            background: rgba(255,250,240,0.9); 
+            box-shadow: inset 0 2px 5px #b5916a, 0 8px 18px rgba(0,0,0,0.2);
+            width: 80%; 
+            font-size: 1.1rem; 
+        }
+        .t5 .infoBox{ background: #37474f; color: #eee; border-color: #ffb74d; }
+        .infoRow{ display: flex; justify-content: space-between; margin: 8px 0; flex-wrap: wrap; gap: 10px; }
+        .infoItem{ min-width: 45%; font-weight: 500; }
+
+        table{ 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 15px 0 20px; 
+            border-radius: 0px; 
+            overflow: hidden; 
+            box-shadow: 0 0 0 rgba(0,0,0,0.2);
+            flex-shrink: 1;
+            flex-grow: 0;
+        }
+        th{ background: #ffffff; color: rgb(0, 0, 0); padding: 14px 8px; font-weight: 700; font-size: 1.1rem; }
+        td{ padding: 12px 8px; background: rgba(255,255,240,0.7); }
+        .t5 td{ background: #455a64; color: white; }
+        th, td{ border: 1px solid #000; text-align: center; }
+        .left{ text-align: left; padding-left: 20px; font-weight: 600; }
+
+        .summary{
+            display: flex; 
+            justify-content: space-between; 
+            background: #fffefd; 
+            color: rgb(0, 0, 0);
+            padding: 16px 22px; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            font-size: 1.2rem;
+            margin: 20px 0 30px; 
+            flex-wrap: wrap; 
+            gap: 15px; 
+            box-shadow: 0 0 0 #000;
+            flex-shrink: 0;
+        }
+        .t5 .summary{ background: #ff8a65; color: #1e1e1e; }
+
+        .sign{ 
+            display: flex; 
+            justify-content: space-between; 
+            margin-top: auto; 
+            padding-top: 20px;
+            flex-shrink: 0;
+        }
+        .sign div{ width: 210px; text-align: center; font-weight: 600; }
+        .line{ border-top: 3px solid #000; margin-top: 35px; margin-bottom: 6px; width: 100%; }
+        .t5 .line{ border-color: #ffb74d; }
+        
+        .remarks{
+            background: rgba(255,250,240,0.9);
+            border: 2px solid #000;
+            border-radius: 0px;
+            padding: 12px 16px;
+            margin: 20px 0 25px;
+            
+            flex-shrink: 0;
+        }
+        .remarks h4{
+            margin: 0 0 8px 0;
+            color: #000;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .remarks-box{
+            min-height: 100px;
+            
+            background: white;
+            border: 2px solid #000;
+            border-radius: 6px;
+            padding: 8px;
+            
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+        .remark-line{
+            border-bottom: 2px solid #000;
+            margin-bottom: 1%;
+            flex-grow: 1;
+        }
+        .t5 .remarks{ background: #37474f; border-color: #ffb74d; }
+        .t5 .remarks h4{ color: #ffb74d; }
+        .t5 .remarks-box{ background: #455a64; color: white; border-color: #ffb74d; }
+
+        /* .no-photo-placeholder{
+            width: 120px; 
+            height: 120px; 
+            border-radius: 50%; 
+            background: #b0bec5;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #37474f;
+            font-weight: 800; 
+            font-size: 14px; 
+            border: 3px dashed #000; 
+            text-align: center;
+        } */
+
+        @media print{
+            .controls{ display: none; }
+            body{ background: white; margin: 0; padding: 0; }
+            .page{ 
+                margin: 0; 
+                box-shadow: none; 
+                border-radius: 0; 
+                page-break-after: always;
+                width: 210mm;
+                height: 297mm;
+            }
+            /* Force ALL colors to print */
+            .card, .card * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            th, .summary, .infoBox, .t1, .t2, .t3, .t4, .t5, .t6 {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <span>Excel: <input type="file" id="excel" accept=".xlsx,.xls,.csv"></span>
+    <button type="button" onclick="downloadTemplate()"> Template</button>
+    <span>Photos: <input type="file" id="photos" multiple accept="image/*"></span>
+    <span>Logo: <input type="file" id="logo" accept="image/*"></span>
+    <span>Template:
+        <select id="template">
+            <option value="1">Cream classic</option>
+            <option value="2">Blue light</option>
+            <option value="3">Green fresh</option>
+            <option value="4">Rose</option>
+            <option value="5">Dark mode</option>
+            <option value="6">Gold honey</option>
+        </select>
+    </span>
+    <span>Border:
+        <select id="borderStyle">
+            <option value="1">Double vintage</option>
+            <option value="2">Blue glow</option>
+            <option value="3">Green dashed</option>
+            <option value="4">Red groove</option>
+            <option value="5">Black bold</option>
+        </select>
+    </span>
+    <span> Roll No: <input type="text" id="roll" placeholder="e.g. 101" style="width:90px;"></span>
+    <button onclick="showSpecific()"> Show student</button>
+    <button onclick="showAll()"> Show all</button>
+    <button onclick="setPassingPercentage()">Set passing %</button>
+    <button onclick="window.print()"> Print</button>
+</div>
+
+<div id="cards"></div>
+
+<script>
+(function() {
+    // ---------- global state ----------
+    let logoSrc = "";                           // dataUrl
+    let photoMap = {};                          // rollNo -> dataUrl
+    const schoolName = "EFA SCHOOL SYSTEM NISAR CAMPUS OKARA";
+    let data = [];                               // array of student objects
+    let totalMarks = {};                         // subject -> max marks (from row 2)
+    let passingPercentage = 33;
+
+    // demo student – used when no data or not found
+    const demoStudent = {
+        RollNo: "0",
+        Name: "Hafiz Shoaib",
+        FatherName: "Abdul Majeed",
+        Class: "10 - A",
+        Exam: "Annual Examination 2026",
+        English: 78,
+        Math: 92,
+        Science: 81,
+        Computer: 88,
+        Urdu: 71,
+        Photo: ""
+    };
+
+    // initial demo card
+    document.getElementById('cards').innerHTML = createCard(demoStudent);
+
+    // ---------- logo upload ----------
+    document.getElementById('logo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => { logoSrc = ev.target.result; refreshCards(); };
+        reader.readAsDataURL(file);
+    });
+
+    // ---------- multiple student photos (filename = roll number, e.g. 101.jpg) ----------
+    document.getElementById('photos').addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        photoMap = {}; // reset, then fill
+        let pending = files.length;
+        if (pending === 0) { refreshCards(); return; }
+
+        files.forEach(file => {
+            const roll = file.name.split('.')[0];          // simple: everything before first dot
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                photoMap[roll] = ev.target.result;
+                pending--;
+                if (pending === 0) refreshCards();        // after all photos loaded, update view
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    // ---------- excel parsing ----------
+    document.getElementById('excel').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (loadEvent) => {
+            const wb = XLSX.read(loadEvent.target.result, { type: 'binary' });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+            if (raw.length < 2) { alert("Template must have headers and total row."); return; }
+
+            const headers = raw[0];                     // first row:  ["RollNo","Name", ..., "Urdu"]
+            const totalRow = raw[1];                     // second row: contains subject max marks
+
+            // build totalMarks object (skip non-subject columns)
+            totalMarks = {};
+            headers.forEach((h, idx) => {
+                if (!["RollNo","Name","FatherName","Class","Exam"].includes(h)) {
+                    const val = Number(totalRow[idx]);
+                    totalMarks[h] = (isNaN(val) || val === 0) ? 100 : val;   // default 100
+                }
+            });
+
+            // build data array from row 2 onward
+            data = [];
+            for (let r = 2; r < raw.length; r++) {
+                const row = raw[r];
+                if (!row || row.length === 0) continue;
+                const student = {};
+                headers.forEach((h, i) => {
+                    student[h] = row[i] !== undefined ? row[i] : "";
+                });
+                // attach photo if available
+                const rollKey = String(student.RollNo || "").trim();
+                student.Photo = photoMap[rollKey] || "";
+                data.push(student);
+            }
+
+            refreshCards();   // auto show all after load
+        };
+        reader.readAsBinaryString(file);
+    });
+
+    // ---------- template & border listeners ----------
+    document.getElementById('template').addEventListener('change', refreshCards);
+    document.getElementById('borderStyle').addEventListener('change', refreshCards);
+
+    // ---------- utility: refresh based on current roll field ----------
+    function refreshCards() {
+        const rollInput = document.getElementById('roll').value.trim();
+        if (rollInput !== "") {
+            showSpecific();
+        } else {
+            showAll();
+        }
+    }
+
+    // ---------- download template .xlsx ----------
+    window.downloadTemplate = function() {
+        const wb = XLSX.utils.book_new();
+        const headers = ["RollNo","Name","FatherName","Class","Exam","English","Math","Science","Computer","Urdu"];
+        const totalRow    = ["", "", "", "", "Total →", 100, 100, 100, 100, 100];
+        const emptyRow    = ["", "", "", "", "", "", "", "", "", ""];
+        const ws = XLSX.utils.aoa_to_sheet([headers, totalRow, emptyRow]);
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        XLSX.writeFile(wb, "Result_Card_Template.xlsx");
+    };
+
+    // ---------- set passing percentage ----------
+    window.setPassingPercentage = function() {
+        const val = prompt("Enter passing percentage (default 33):", passingPercentage);
+        if (val !== null && !isNaN(parseFloat(val))) {
+            passingPercentage = parseFloat(val);
+            refreshCards();
+        }
+    };
+
+    // ---------- create card from student object ----------
+    function createCard(s) {
+        // subjects = all keys except reserved ones
+        const subjects = Object.keys(s).filter(k => 
+            !["RollNo","Name","FatherName","Class","Exam","Photo"].includes(k)
+        );
+
+        const getGrade = (obt, max) => {
+    let per = (obt / max) * 100;
+
+    if (per >= 90) return "A+";
+    if (per >= 80) return "A";
+    if (per >= 70) return "B";
+    if (per >= 60) return "C";
+    if (per >= 50) return "D";
+    if (per >= 33) return "E";
+    return "F";
+};
+
+        const rows = subjects.map(sub => {
+            const maxMarks = totalMarks[sub] || 100;
+            const obt = Number(s[sub]) || 0;
+            const grade = getGrade(obt, maxMarks);
+            return `<tr>
+                <td class="left">${sub}</td>
+                <td>${maxMarks}</td>
+                <td>${obt}</td>
+                <td>${grade}</td>
+            </tr>`;
+        }).join('');
+
+        const totalMax = subjects.reduce((acc, sub) => acc + (totalMarks[sub] || 100), 0);
+        const totalObt = subjects.reduce((acc, sub) => acc + (Number(s[sub]) || 0), 0);
+        const percent = (totalObt / totalMax * 100).toFixed(1);
+        const result = (parseFloat(percent) >= passingPercentage) ? "Pass" : " Fail";
+
+        const templateChoice = document.getElementById('template').value;
+        const borderChoice = document.getElementById('borderStyle').value;
+
+        // photo html
+        const photoHtml = s.Photo 
+            ? `<img class="photo" src="${s.Photo}" alt="student">` 
+            : `<div class="no-photo-placeholder"></div>`;
+
+        return `<div class="page">
+            <div class="card t${templateChoice} b${borderChoice}">
+                <div class="top">
+                    ${logoSrc ? `<img class="logo" src="${logoSrc}" alt="logo">` : '<div class="logo" style="background:#eee; display:flex; align-items:center; justify-content:center; color:#000;"> logo</div>'}
+                    <h2 style="margin:0;">${schoolName}</h2>
+                    <h3 style="margin:6px 0 0;">${s.Exam || 'Annual Exam'}</h3>
+                    <h2 style="margin:4px 0;"> RESULT CARD</h2>
+                </div>
+
+                <div class="row">
+                    <div class="infoBox">
+                        <div class="infoRow">
+                            <span class="infoItem"><b>Name:</b> ${s.Name ?? ''}</span>
+                            <span class="infoItem"><b>Father's Name:</b> ${s.FatherName ?? ''}</span>
+                            <span class="infoItem"><b>Session:</b> ${s.RollNo ?? ''}</span>
+                            <span class="infoItem"><b>Class:</b> ${s.Class ?? ''}</span>
+                        </div>
+                        <div class="infoRow">
+                        
+                        </div>
+                    </div>
+                    <div>${photoHtml}</div>
+                </div>
+
+                <table>
+                    <tr><th class="left">Subject</th><th>Total Marks</th><th>Obtained Marks</th><th>Grade</th></tr>
+                    ${rows}
+                </table>
+
+                <div class="summary">
+                    <span>Total Marks: ${totalMax}</span>
+                    <span>Obtained Marks: ${totalObt}</span>
+                    <span>Percentage: ${percent}%</span>
+                    <span>Result:${result}</span>
+                </div>
+
+                <div class="remarks">
+                    <h4>Teacher's Remarks</h4>
+                    <div class="remarks-box">
+                        <div class="remark-line"></div>
+                        <div class="remark-line"></div>
+                    </div>
+                </div>
+
+                <div class="sign">
+                    <div><div class="line"></div> Teacher's signature</div>
+                    <div><div class="line"></div> Principal's signature</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ---------- show all cards ----------
+    window.showAll = function() {
+        // refresh photos from photomap before rendering
+        if (data.length > 0) {
+            data.forEach(std => {
+                const key = String(std.RollNo || "").trim();
+                if (photoMap[key]) std.Photo = photoMap[key];
+                else std.Photo = std.Photo || "";   // keep existing if any
+            });
+            document.getElementById('cards').innerHTML = data.map(createCard).join('');
+        } else {
+            // show demo card if no data
+            document.getElementById('cards').innerHTML = createCard(demoStudent);
+        }
+    };
+
+    // ---------- show specific roll ----------
+    window.showSpecific = function() {
+        const roll = document.getElementById('roll').value.trim();
+        // ensure photo mapping from photoMap
+        if (data.length > 0) {
+            data.forEach(std => {
+                const key = String(std.RollNo || "").trim();
+                if (photoMap[key]) std.Photo = photoMap[key];
+            });
+            const student = data.find(s => String(s.RollNo).trim() === roll) || demoStudent;
+            document.getElementById('cards').innerHTML = createCard(student);
+        } else {
+            document.getElementById('cards').innerHTML = createCard(demoStudent);
+        }
+    };
+
+    // ensure that after photo upload, the current view updates
+    window.updatePhotos = function() {} // no longer needed, but keep harmony
+
+    // extra: call refresh after photo load (already inside photo promise)
+    // but also provide set passing from button
+})();
+</script>
+</body>
+</html>
