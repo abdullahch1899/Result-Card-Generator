@@ -52,12 +52,12 @@
             flex-direction: column;
         }
 
-        /* border presets - adjusted for full page
+        /* border presets – now activated! */
         .b1{ border: 8px double #000; box-shadow: inset 0 0 0 6px #000; }
         .b2{ border: 10px solid #1e88e5; box-shadow: inset 0 0 0 3px white, inset 0 0 0 7px #90caf9; }
         .b3{ border: 10px dashed #2e7d32; box-shadow: inset 0 0 0 3px #f1f8e9, inset 0 0 0 7px #a5d6a7; }
         .b4{ border: 12px groove #b23c1c; box-shadow: inset 0 0 0 3px #ffccbc, inset 0 0 0 8px #ffab91; }
-        .b5{ border: 10px solid #1b1b1b; box-shadow: inset 0 0 0 4px #f5f5f5, inset 0 0 0 9px #424242; } */
+        .b5{ border: 10px solid #1b1b1b; box-shadow: inset 0 0 0 4px #f5f5f5, inset 0 0 0 9px #424242; }
 
         /* theme backgrounds */
         .t1{ background: #fff9f0; }
@@ -169,7 +169,6 @@
             border-radius: 0px;
             padding: 12px 16px;
             margin: 20px 0 25px;
-            
             flex-shrink: 0;
         }
         .remarks h4{
@@ -180,12 +179,10 @@
         }
         .remarks-box{
             min-height: 100px;
-            
             background: white;
             border: 2px solid #000;
             border-radius: 6px;
             padding: 8px;
-            
             display: flex;
             flex-direction: column;
             justify-content: space-around;
@@ -199,7 +196,8 @@
         .t5 .remarks h4{ color: #ffb74d; }
         .t5 .remarks-box{ background: #455a64; color: white; border-color: #ffb74d; }
 
-        /* .no-photo-placeholder{
+        /* if no photo placeholder */
+        .no-photo-placeholder{
             width: 120px; 
             height: 120px; 
             border-radius: 50%; 
@@ -212,7 +210,7 @@
             font-size: 14px; 
             border: 3px dashed #000; 
             text-align: center;
-        } */
+        }
 
         @media print{
             .controls{ display: none; }
@@ -242,7 +240,7 @@
 
 <div class="controls">
     <span>Excel: <input type="file" id="excel" accept=".xlsx,.xls,.csv"></span>
-    <button type="button" onclick="downloadTemplate()"> Template</button>
+    <button type="button" onclick="downloadTemplate()"> 📥 Template</button>
     <span>Photos: <input type="file" id="photos" multiple accept="image/*"></span>
     <span>Logo: <input type="file" id="logo" accept="image/*"></span>
     <span>Template:
@@ -265,10 +263,10 @@
         </select>
     </span>
     <span> Roll No: <input type="text" id="roll" placeholder="e.g. 101" style="width:90px;"></span>
-    <button onclick="showSpecific()"> Show student</button>
-    <button onclick="showAll()"> Show all</button>
-    <button onclick="setPassingPercentage()">Set passing %</button>
-    <button onclick="window.print()"> Print</button>
+    <button onclick="showSpecific()"> 🔍 Show student</button>
+    <button onclick="showAll()"> 👥 Show all</button>
+    <button onclick="setPassingPercentage()"> 📊 Set passing %</button>
+    <button onclick="window.print()"> 🖨️ Print</button>
 </div>
 
 <div id="cards"></div>
@@ -318,7 +316,10 @@
         if (pending === 0) { refreshCards(); return; }
 
         files.forEach(file => {
-            const roll = file.name.split('.')[0];          // simple: everything before first dot
+            // robust: take filename without extension, keep full number (e.g., 101, 102A)
+            const fullName = file.name;
+            const dotIndex = fullName.lastIndexOf('.');
+            const roll = dotIndex > 0 ? fullName.substring(0, dotIndex) : fullName;
             const reader = new FileReader();
             reader.onload = (ev) => {
                 photoMap[roll] = ev.target.result;
@@ -415,16 +416,15 @@
         );
 
         const getGrade = (obt, max) => {
-    let per = (obt / max) * 100;
-
-    if (per >= 90) return "A+";
-    if (per >= 80) return "A";
-    if (per >= 70) return "B";
-    if (per >= 60) return "C";
-    if (per >= 50) return "D";
-    if (per >= 33) return "E";
-    return "F";
-};
+            let per = (obt / max) * 100;
+            if (per >= 90) return "A+";
+            if (per >= 80) return "A";
+            if (per >= 70) return "B";
+            if (per >= 60) return "C";
+            if (per >= 50) return "D";
+            if (per >= 33) return "E";
+            return "F";
+        };
 
         const rows = subjects.map(sub => {
             const maxMarks = totalMarks[sub] || 100;
@@ -449,12 +449,12 @@
         // photo html
         const photoHtml = s.Photo 
             ? `<img class="photo" src="${s.Photo}" alt="student">` 
-            : `<div class="no-photo-placeholder"></div>`;
+            : `<div class="no-photo-placeholder">📷 no photo</div>`;
 
         return `<div class="page">
             <div class="card t${templateChoice} b${borderChoice}">
                 <div class="top">
-                    ${logoSrc ? `<img class="logo" src="${logoSrc}" alt="logo">` : '<div class="logo" style="background:#eee; display:flex; align-items:center; justify-content:center; color:#000;"> logo</div>'}
+                    ${logoSrc ? `<img class="logo" src="${logoSrc}" alt="logo">` : '<div class="logo" style="background:#eee; display:flex; align-items:center; justify-content:center; color:#000; font-size:12px;"> logo</div>'}
                     <h2 style="margin:0;">${schoolName}</h2>
                     <h3 style="margin:6px 0 0;">${s.Exam || 'Annual Exam'}</h3>
                     <h2 style="margin:4px 0;"> RESULT CARD</h2>
@@ -465,11 +465,11 @@
                         <div class="infoRow">
                             <span class="infoItem"><b>Name:</b> ${s.Name ?? ''}</span>
                             <span class="infoItem"><b>Father's Name:</b> ${s.FatherName ?? ''}</span>
-                            <span class="infoItem"><b>Session:</b> ${s.RollNo ?? ''}</span>
-                            <span class="infoItem"><b>Class:</b> ${s.Class ?? ''}</span>
+                            
                         </div>
                         <div class="infoRow">
-                        
+                            <span class="infoItem"><b>Roll No:</b> ${s.RollNo ?? ''}</span>
+                            <span class="infoItem"><b>Class:</b> ${s.Class ?? ''}</span>
                         </div>
                     </div>
                     <div>${photoHtml}</div>
@@ -531,16 +531,35 @@
             const student = data.find(s => String(s.RollNo).trim() === roll) || demoStudent;
             document.getElementById('cards').innerHTML = createCard(student);
         } else {
-            document.getElementById('cards').innerHTML = createCard(demoStudent);
+            // if no data, but maybe we want demo with photo map? try photo from demo roll?
+            const demoCopy = { ...demoStudent };
+            if (photoMap[roll]) demoCopy.Photo = photoMap[roll];
+            document.getElementById('cards').innerHTML = createCard(demoCopy);
         }
     };
 
-    // ensure that after photo upload, the current view updates
-    window.updatePhotos = function() {} // no longer needed, but keep harmony
-
-    // extra: call refresh after photo load (already inside photo promise)
-    // but also provide set passing from button
+    // initial call to bind border/template changes after demo load
 })();
+</script>
+<!-- small addition: ensure that border changes reflect immediately when no student is selected (demo) -->
+<script>
+    // this extra listener guarantees that any change in select also refreshes demo view
+    (function secondary() {
+        function refreshIfNoData() {
+            // if data array is empty (from outer scope) we need reference – grab from closure via global hack?
+            // simpler: check visible cards count, but better: use the existing function refreshCards
+            // but refreshCards uses outer state. we invoke the same logic via click simulation? 
+            // we can just call showAll/showSpecific based on field. Because outer functions are global.
+            const rollField = document.getElementById('roll');
+            if (rollField.value.trim() === '') {
+                window.showAll();   // will show demo if data empty
+            } else {
+                window.showSpecific();
+            }
+        }
+        document.getElementById('template').addEventListener('change', refreshIfNoData);
+        document.getElementById('borderStyle').addEventListener('change', refreshIfNoData);
+    })();
 </script>
 </body>
 </html>
